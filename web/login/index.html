@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login / Signup</title>
+    <link rel="stylesheet" href="/login/style.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="overlay"></div>
+    <div class="container">
+        <div class="tab-container">
+            <button class="tab-button active" onclick="showForm('login')">Sign In</button>
+            <button class="tab-button" onclick="showForm('signup')">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="login-form" class="form active" onsubmit="handleLogin(event)">
+            <h2>Sign In</h2>
+            <div class="input-group">
+                <input type="email" id="login-email" placeholder="Email Address" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="login-password" placeholder="Password" required>
+            </div>
+            <button type="submit" class="submit-button">Sign In</button>
+            <p class="switch-text">Don't have an account? <span onclick="showForm('signup')">Sign up now</span></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signup-form" class="form" onsubmit="handleSignup(event)">
+            <h2>Create Account</h2>
+            <div class="input-group">
+                <input type="text" id="signup-name" placeholder="Full Name" required>
+            </div>
+            <div class="input-group">
+                <input type="email" id="signup-email" placeholder="Email Address" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="signup-password" placeholder="Create Password" required>
+            </div>
+            <button type="submit" class="submit-button">Sign Up</button>
+            <p class="switch-text">Already have an account? <span onclick="showForm('login')">Sign in here</span></p>
+        </form>
+    </div>
+
+    <script src="/login/script.js?v=2"></script>
+</body>
+</html>
