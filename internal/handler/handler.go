@@ -52,6 +52,7 @@ func New() (*Handler, error) {
 	})
 
 	wsManager := websocket.NewManager()
+	go wsManager.Run()
 
 	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		h.websocketHandler(w, r, wsManager)

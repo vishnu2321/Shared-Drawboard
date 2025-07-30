@@ -79,7 +79,6 @@ func (m *MongoDB) FindBy(ctx context.Context, field string, value interface{}) (
 	var user User
 
 	if err := col.FindOne(ctx, bson.M{strings.ToLower(field): value}).Decode(&user); err != nil {
-		fmt.Println(err)
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
 		}
