@@ -5,10 +5,14 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	ws "github.com/gorilla/websocket"
 	"github.com/shared-drawboard/internal/middleware"
 	"github.com/shared-drawboard/internal/models"
 	"github.com/shared-drawboard/internal/service"
+	"github.com/shared-drawboard/internal/websocket"
 	"github.com/shared-drawboard/pkg/auth"
+	"github.com/shared-drawboard/pkg/helper"
+	"github.com/shared-drawboard/pkg/logger"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,6 +50,12 @@ func New() (*Handler, error) {
 	router.HandleFunc("/drawboard", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/drawboard/", http.StatusMovedPermanently)
 	})
+
+	wsManager := websocket.NewManager()
+
+	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		h.websocketHandler(w, r, wsManager)
+	}).Methods("GET", "POST")
 
 	return h, nil
 }
@@ -109,4 +119,55 @@ func (h *Handler) signinUserHandler(w http.ResponseWriter, r *http.Request) {
 	response := map[string]interface{}{"message": "sign in successful", "token": token}
 	json.NewEncoder(w).Encode(response)
 
+}
+
+var upgrader = ws.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+}
+
+func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manager *websocket.Manager) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	client := &websocket.Client{
+		ID:   helper.GenerateUniqueID(),
+		Conn: conn,
+		Send: make(chan []byte),
+	}
+
+	manager.Register <- client
+
+	go handleRead(client, manager)
+	go handleWrite(client, manager)
+}
+
+func handleRead(client *websocket.Client, manager *websocket.Manager) {
+	defer func() {
+		manager.Unregister <- client
+		client.Conn.Close()
+	}()
+
+	for {
+		_, message, err := client.Conn.ReadMessage()
+		if err != nil {
+			logger.Error("Read error: %s", err)
+			break
+		}
+		manager.Broadcast <- message
+	}
+}
+
+func handleWrite(client *websocket.Client, manager *websocket.Manager) {
+	for message := range client.Send {
+		err := client.Conn.WriteMessage(ws.TextMessage, message)
+		if err != nil {
+			logger.Error("Write error: %s", err)
+			break
+		}
+	}
+	client.Conn.Close()
 }
