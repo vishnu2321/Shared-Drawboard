@@ -162,7 +162,7 @@ func handleRead(client *websocket.Client, manager *websocket.Manager) {
 	}
 }
 
-func handleWrite(client *websocket.Client, manager *websocket.Manager) {
+func handleWrite(client *websocket.Client, _ *websocket.Manager) {
 	for message := range client.Send {
 		err := client.Conn.WriteMessage(ws.TextMessage, message)
 		if err != nil {
