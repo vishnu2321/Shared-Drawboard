@@ -64,7 +64,7 @@ func (m *MongoDB) SaveUserDB(ctx context.Context, u models.User) (id string, err
 		user.ID = primitive.NewObjectID()
 	}
 
-	_, err = col.InsertOne(ctx, u)
+	_, err = col.InsertOne(ctx, user)
 	if err != nil {
 		logger.Error("Insert failed: %v", err)
 		return "", fmt.Errorf("failed to insert user: %w", err)
