@@ -1,0 +1,40 @@
+canvas {
+    border: 1px solid black;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    margin: 0;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+}
+html {
+    margin: 0;
+    height: 100%;
+}
+
+#options {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    background-color: white;
+    padding: 10px;
+    border: 1px solid black;
+    z-index: 10;
+}
+
+#shapes {
+    display: flex;
+}
+
+#colors {
+    display: flex;
+}
+
+#options button {
+    margin: 5px;
+}

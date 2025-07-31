@@ -3,9 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Drawboard</title>
+    <link rel="stylesheet" href="/drawboard/style.css">
 </head>
 <body>
-        <p>Drawboard Home page</p>
+    <div id="options">
+        <div id="shapes">
+            <button id="rect">Rectangle</button>
+            <button id="circle">Circle</button>
+            <button id="line">Line</button>
+            <button id="free">Free Draw</button>
+            <button id="erase">Erase</button>
+        </div>
+        <div id="colors">
+            <button id="red">Red</button>
+            <button id="green">Green</button>
+            <button id="blue">Blue</button>
+        </div>
+    </div>
+    <canvas id="drawCanvas"></canvas>
+    <script src="/drawboard/script.js"></script>
 </body>
 </html>

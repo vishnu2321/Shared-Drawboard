@@ -44,19 +44,19 @@ func New() (*Handler, error) {
 	router.HandleFunc("/signin", h.signinUserHandler).Methods("POST")
 
 	router.PathPrefix("/drawboard/").Handler(
-		middleware.AuthMiddleware(http.StripPrefix("/drawboard/", http.FileServer(http.Dir("./web/drawboard")))),
+		http.StripPrefix("/drawboard/", http.FileServer(http.Dir("./web/drawboard"))),
 	).Methods("GET")
 
 	router.HandleFunc("/drawboard", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/drawboard/", http.StatusMovedPermanently)
-	})
+	}).Methods("GET")
 
 	wsManager := websocket.NewManager()
 	go wsManager.Run()
 
-	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+	router.Handle("/ws", middleware.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.websocketHandler(w, r, wsManager)
-	}).Methods("GET", "POST")
+	})))
 
 	return h, nil
 }
