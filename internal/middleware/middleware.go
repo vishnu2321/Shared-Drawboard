@@ -19,6 +19,8 @@ func setEnvVariables() {
 	}
 }
 
+type contextKey string
+
 func AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		setEnvVariables()
@@ -60,7 +62,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		userID := claims["sub"].(string)
 
 		// Add to context
-		ctx := context.WithValue(r.Context(), "user_id", userID)
+		ctx := context.WithValue(r.Context(), contextKey("user_id"), userID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
