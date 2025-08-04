@@ -1,40 +1,141 @@
-canvas {
-    border: 1px solid black;
-    width: 100vw;
-    height: 100vh;
-    display: block;
+/* style.css */
+* {
     margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-    margin: 0;
-    overflow: hidden;
-}
-html {
-    margin: 0;
-    height: 100%;
-}
-
-#options {
-    position: absolute;
-    top: 0;
-    right: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    background-color: white;
+}
+
+.toolbar {
+    background-color: #2c3e50;
     padding: 10px;
-    border: 1px solid black;
-    z-index: 10;
-}
-
-#shapes {
     display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 100;
 }
 
-#colors {
+.tool {
+    background-color: #34495e;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
     display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
-#options button {
-    margin: 5px;
+.tool:hover {
+    background-color: #3d566e;
+}
+
+.tool.active {
+    background-color: #3498db;
+    transform: translateY(-2px);
+}
+
+.color-picker {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    outline: none;
+}
+
+.thickness-slider {
+    width: 100px;
+    margin: 0 10px;
+}
+
+.canvas-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background-color: #ecf0f1;
+}
+
+#whiteboard {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.status-bar {
+    background-color: #34495e;
+    color: white;
+    padding: 8px 15px;
+    font-size: 14px;
+    text-align: right;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.clear-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.clear-btn:hover {
+    background-color: #c0392b;
+}
+
+.shape-preview {
+    position: absolute;
+    pointer-events: none;
+    border: 2px dashed #3498db;
+    opacity: 0.7;
+    display: none;
+}
+
+/* Custom cursors for different tools */
+#whiteboard.draw-cursor {
+    cursor: crosshair;
+}
+
+#whiteboard.erase-cursor {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="white" stroke="black" stroke-width="1"/></svg>') 10 10, auto;
+}
+
+#whiteboard.line-cursor {
+    cursor: crosshair;
+}
+
+#whiteboard.rectangle-cursor {
+    cursor: crosshair;
+}
+
+#whiteboard.circle-cursor {
+    cursor: crosshair;
+}
+
+#whiteboard.text-cursor {
+    cursor: text;
+}
+
+#whiteboard.select-cursor {
+    cursor: default;
 }

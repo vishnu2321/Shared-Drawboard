@@ -1,27 +1,40 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drawboard</title>
-    <link rel="stylesheet" href="/drawboard/style.css">
+    <title>Interactive Whiteboard</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="options">
-        <div id="shapes">
-            <button id="rect">Rectangle</button>
-            <button id="circle">Circle</button>
-            <button id="line">Line</button>
-            <button id="free">Free Draw</button>
-            <button id="erase">Erase</button>
-        </div>
-        <div id="colors">
-            <button id="red">Red</button>
-            <button id="green">Green</button>
-            <button id="blue">Blue</button>
-        </div>
+    <div class="toolbar">
+        <button class="tool active  " data-tool="draw">✏️ Draw</button>
+        <button class="tool" data-tool="line">📏 Line</button>
+        <button class="tool" data-tool="rectangle">⬜ Rectangle</button>
+        <button class="tool" data-tool="circle">⭕ Circle</button>
+        <button class="tool" data-tool="text">🔤 Text</button>
+        <input type="color" class="color-picker" value="#000000">
+        <label for="thickness">Size:</label>
+        <input type="range" class="thickness-slider" id="thickness" min="1" max="20" value="3">
+        <span id="thickness-value">3px</span>
+        <button class="tool" data-tool="erase">🧽 Erase</button>
+        <label for="eraser-size" id="eraser-size-label" style="display: none;">Eraser:</label>
+        <input type="range" class="thickness-slider" id="eraser-size" min="10" max="50" value="20" style="display: none;">
+        <span id="eraser-size-value" style="display: none;">20px</span>
+        <button class="tool" data-tool="select">↖️ Select</button>
     </div>
-    <canvas id="drawCanvas"></canvas>
-    <script src="/drawboard/script.js"></script>
+    
+    <div class="canvas-container">
+        <canvas id="whiteboard"></canvas>
+        <div class="shape-preview" id="shape-preview"></div>
+    </div>
+    
+    <div class="status-bar">
+        <div>Whiteboard</div>
+        <button class="clear-btn" id="clear-board">Clear Board</button>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
