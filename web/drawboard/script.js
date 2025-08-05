@@ -19,7 +19,104 @@ class Whiteboard {
         this.objects = [];
         this.resizeHandleIndex = -1;
         
+        // WebSocket connection
+        this.ws = null;
+        this.connectWebSocket();
+        
         this.init();
+    }
+
+    connectWebSocket() {
+        // Create WebSocket connection
+        this.ws = new WebSocket('ws://localhost:8080/ws');
+        
+        // Add WebSocket event listeners
+        this.ws.onopen = () => console.log('WebSocket connected');
+        this.ws.onmessage = (event) => this.handleWebSocketMessage(event);
+        this.ws.onclose = () => console.log('WebSocket disconnected');
+        this.ws.onerror = (error) => console.error('WebSocket error:', error);
+    }
+
+    handleWebSocketMessage(event) {
+        const message = JSON.parse(event.data);
+        console.log('Received WebSocket message:', message);
+        // Process incoming drawing events from other users
+        this.processRemoteEvent(message);
+    }
+
+    sendDrawingEvent(eventData) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(eventData));
+        }
+    }
+
+    processRemoteEvent(eventData) {
+        // Process events from other users
+        // This would redraw the canvas based on remote events
+        console.log('Processing remote event:', eventData);
+        
+        switch (eventData.type) {
+            case 'freehandDraw':
+                // Create a new object based on the event data
+                const drawObj = {
+                    type: eventData.tool,
+                    color: eventData.data.color,
+                    thickness: eventData.data.thickness,
+                    points: eventData.data.points
+                };
+                this.objects.push(drawObj);
+                this.redraw();
+                break;
+                
+            case 'shapeCreate':
+                // Create a new shape object based on the event data
+                const shapeObj = {
+                    type: eventData.tool,
+                    color: eventData.data.color,
+                    thickness: eventData.data.thickness,
+                    x: eventData.data.x,
+                    y: eventData.data.y,
+                    width: eventData.data.width,
+                    height: eventData.data.height
+                };
+                this.objects.push(shapeObj);
+                this.redraw();
+                break;
+                
+            case 'textAdd':
+                // Create a new text object based on the event data
+                const textObj = {
+                    type: 'text',
+                    color: eventData.data.color,
+                    thickness: eventData.data.thickness,
+                    x: eventData.data.x,
+                    y: eventData.data.y,
+                    width: 0,
+                    height: 0,
+                    text: eventData.data.text
+                };
+                this.objects.push(textObj);
+                this.redraw();
+                break;
+                
+            case 'objectDelete':
+                // Remove object at the specified index
+                if (eventData.data.index < this.objects.length) {
+                    this.objects.splice(eventData.data.index, 1);
+                    this.redraw();
+                }
+                break;
+                
+            case 'boardClear':
+                // Clear the entire board
+                this.objects = [];
+                this.deselectObject();
+                this.redraw();
+                break;
+                
+            default:
+                console.log('Unknown event type:', eventData.type);
+        }
     }
 
     init() {
@@ -128,6 +225,12 @@ class Whiteboard {
     }
 
     handleMouseDown(e) {
+        console.log('Mouse down event:', {
+            tool: this.currentTool,
+            x: this.startX,
+            y: this.startY
+        });
+        
         const rect = this.canvas.getBoundingClientRect();
         this.startX = e.clientX - rect.left;
         this.startY = e.clientY - rect.top;
@@ -183,11 +286,33 @@ class Whiteboard {
     }
 
     handleMouseUp() {
-        if (!this.isDrawing && !this.isResizing) return;
+        console.log('Mouse up event triggered');
+        
+        if (!this.isDrawing && !this.isResizing) {
+            console.log('No drawing or resizing in progress');
+            return;
+        }
         
         if (this.isDrawing) {
             if ((this.currentTool === 'draw' || this.currentTool === 'erase') && this.currentObject.points.length > 1) {
+                console.log('Freehand drawing completed:', {
+                    tool: this.currentTool,
+                    pointsCount: this.currentObject.points.length,
+                    color: this.currentObject.color,
+                    thickness: this.currentObject.thickness
+                });
                 this.objects.push(this.currentObject);
+                
+                // Send drawing event through WebSocket
+                this.sendDrawingEvent({
+                    type: 'freehandDraw',
+                    tool: this.currentTool,
+                    data: {
+                        color: this.currentObject.color,
+                        thickness: this.currentObject.thickness,
+                        points: this.currentObject.points
+                    }
+                });
             } else if (this.currentTool !== 'draw' && this.currentTool !== 'erase') {
                 // Adjust negative dimensions
                 if (this.currentObject.width < 0) {
@@ -201,7 +326,30 @@ class Whiteboard {
                 
                 // Only add if shape has meaningful size
                 if (Math.abs(this.currentObject.width) > 5 || Math.abs(this.currentObject.height) > 5) {
+                    console.log('Shape created:', {
+                        type: this.currentTool,
+                        x: this.currentObject.x,
+                        y: this.currentObject.y,
+                        width: this.currentObject.width,
+                        height: this.currentObject.height,
+                        color: this.currentObject.color,
+                        thickness: this.currentObject.thickness
+                    });
                     this.objects.push(this.currentObject);
+                    
+                    // Send shape creation event through WebSocket
+                    this.sendDrawingEvent({
+                        type: 'shapeCreate',
+                        tool: this.currentTool,
+                        data: {
+                            color: this.currentObject.color,
+                            thickness: this.currentObject.thickness,
+                            x: this.currentObject.x,
+                            y: this.currentObject.y,
+                            width: this.currentObject.width,
+                            height: this.currentObject.height
+                        }
+                    });
                 }
             }
             this.currentObject = null;
@@ -491,6 +639,8 @@ class Whiteboard {
     }
 
     addTextObject(x, y) {
+        console.log('Adding text object at position:', { x, y });
+        
         const text = prompt('Enter text:', 'Text');
         if (text) {
             const textObj = {
@@ -503,8 +653,25 @@ class Whiteboard {
                 thickness: this.currentThickness,
                 text: text
             };
+            
+            console.log('Text object created:', textObj);
             this.objects.push(textObj);
             this.redraw();
+            
+            // Send text addition event through WebSocket
+            this.sendDrawingEvent({
+                type: 'textAdd',
+                tool: 'text',
+                data: {
+                    color: textObj.color,
+                    thickness: textObj.thickness,
+                    x: textObj.x,
+                    y: textObj.y,
+                    text: textObj.text
+                }
+            });
+        } else {
+            console.log('Text input cancelled');
         }
     }
 
@@ -512,17 +679,52 @@ class Whiteboard {
         if (this.selectedObject) {
             const index = this.objects.indexOf(this.selectedObject);
             if (index > -1) {
+                console.log('Deleting object:', {
+                    type: this.selectedObject.type,
+                    index: index
+                });
+                
+                // Send object deletion event through WebSocket
+                this.sendDrawingEvent({
+                    type: 'objectDelete',
+                    tool: 'select',
+                    data: {
+                        index: index,
+                        objectType: this.selectedObject.type
+                    }
+                });
+                
                 this.objects.splice(index, 1);
                 this.deselectObject();
                 this.redraw();
+                
+                console.log('Object deleted successfully');
             }
+        } else {
+            console.log('No object selected for deletion');
         }
     }
 
     clearBoard() {
-        this.objects = [];
-        this.deselectObject();
-        this.redraw();
+        console.log('Clear board requested. Current object count:', this.objects.length);
+        
+        if (confirm('Are you sure you want to clear the entire board?')) {
+            console.log('Board clear confirmed by user');
+            
+            // Send board clear event through WebSocket
+            this.sendDrawingEvent({
+                type: 'boardClear',
+                tool: 'clear',
+                data: {}
+            });
+            
+            this.objects = [];
+            this.deselectObject();
+            this.redraw();
+            console.log('Board cleared successfully');
+        } else {
+            console.log('Board clear cancelled by user');
+        }
     }
 }
 
