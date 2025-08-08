@@ -17,7 +17,7 @@ func setEnvVariables() {
 	}
 }
 
-func CreateNewToken(username string) (string, error) {
+func CreateJWTToken(username string) (string, error) {
 	setEnvVariables()
 
 	secretKey := os.Getenv("SECRETKEY_FOR_JWT")
@@ -40,7 +40,7 @@ func CreateNewToken(username string) (string, error) {
 	return tokenString, nil
 }
 
-func VerifyToken(tokenStr string) (string, error) {
+func VerifyJWTToken(tokenStr string) (string, error) {
 	setEnvVariables()
 	secretKey := os.Getenv("SECRETKEY_FOR_JWT")
 

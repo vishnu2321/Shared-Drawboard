@@ -112,7 +112,7 @@ func (h *Handler) signinUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.CreateNewToken(user.Email)
+	token, err := auth.CreateJWTToken(user.Email)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
