@@ -3,9 +3,12 @@ package service
 import (
 	"context"
 	"errors"
+	"strconv"
+	"time"
 
 	"github.com/shared-drawboard/internal/database"
 	"github.com/shared-drawboard/internal/models"
+	"github.com/shared-drawboard/pkg/auth"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -54,4 +57,31 @@ func (s *Service) GetUser(ctx context.Context, value string) (*models.User, erro
 		Password: user.Password,
 	}
 	return &u, nil
+}
+
+func (s *Service) CreateSession(ctx context.Context, userID string) (*models.SessionDTO, error) {
+	refreshtokenString, err := auth.CreateRefreshToken(32)
+	if err != nil {
+		return &models.SessionDTO{}, err
+	}
+
+	refreshtokenHash, err := bcrypt.GenerateFromPassword([]byte(refreshtokenString), bcrypt.DefaultCost)
+	if err != nil {
+		return &models.SessionDTO{}, err
+	}
+
+	sDTO := models.SessionDTO{
+		UserID:     userID,
+		TokenHash:  string(refreshtokenHash),
+		ExpiresAt:  strconv.FormatInt(time.Now().Add(24*7*time.Hour).Unix(), 10),
+		CreatedAt:  strconv.FormatInt(time.Now().Unix(), 10),
+		LastUsedAt: strconv.FormatInt(time.Now().Unix(), 10),
+	}
+
+	sDTO.ID, err = s.DB.CreateSession(ctx, sDTO)
+	if err != nil {
+		return &models.SessionDTO{}, err
+	}
+
+	return &sDTO, nil
 }

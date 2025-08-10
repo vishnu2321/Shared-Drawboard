@@ -14,16 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type User struct {
-	ID       primitive.ObjectID `bson:"_id,omitempty"`
-	Name     string             `bson:"name,omitempty"`
-	Email    string             `bson:"email"`
-	Password string             `bson:"password"`
-}
-
 type DB interface {
 	SaveUserDB(ctx context.Context, u models.User) (id string, err error)
 	FindBy(ctx context.Context, field string, value interface{}) (*User, error)
+	CreateSession(ctx context.Context, session models.SessionDTO) (string, error)
 }
 
 type MongoDB struct {
@@ -32,7 +26,8 @@ type MongoDB struct {
 }
 
 const (
-	USER_COLLECTION = "users"
+	USER_COLLECTION    = "users"
+	SESSION_COLLECTION = "sessions"
 )
 
 func New() (*MongoDB, error) {
@@ -86,3 +81,55 @@ func (m *MongoDB) FindBy(ctx context.Context, field string, value interface{}) (
 	}
 	return &user, nil
 }
+
+func ClearPreviousSessions(ctx context.Context, col *mongo.Collection, userID string) error {
+	filter := bson.M{"user_id": userID}
+
+	_, err := col.DeleteMany(ctx, filter)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *MongoDB) CreateSession(ctx context.Context, s models.SessionDTO) (string, error) {
+	col := m.db.Collection(SESSION_COLLECTION)
+
+	session := Session{
+		UserID:     s.UserID,
+		TokenHash:  s.TokenHash,
+		ExpiresAt:  s.ExpiresAt,
+		CreatedAt:  s.CreatedAt,
+		LastUsedAt: s.LastUsedAt,
+	}
+
+	if session.ID.IsZero() {
+		session.ID = primitive.NewObjectID()
+	}
+
+	err := ClearPreviousSessions(ctx, col, s.UserID)
+	if err != nil {
+		logger.Error("Insert failed: %v", err)
+		return "", fmt.Errorf("failed to clear previous sessions: %w", err)
+	}
+
+	_, err = col.InsertOne(ctx, session)
+	if err != nil {
+		logger.Error("Insert failed: %v", err)
+		return "", fmt.Errorf("failed to insert user: %w", err)
+	}
+	return session.ID.Hex(), nil
+}
+
+// func (m *MongoDB) UpdateSession(ctx context.Context) {
+// 	col := m.db.Collection(SESSION_COLLECTION)
+
+// }
+
+// func (m *MongoDB) DeleteSession(ctx context.Context) {
+// 	col := m.db.Collection(SESSION_COLLECTION)
+
+// 	_, err := col.DeleteOne()
+
+// }

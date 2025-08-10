@@ -10,6 +10,15 @@ type User struct {
 	Password string `json:"password"`
 }
 
+type SessionDTO struct {
+	ID         string `json:"_id,omitempty"`
+	UserID     string `json:"user_id"`
+	TokenHash  string `json:"token_hash"`
+	ExpiresAt  string `json:"expires_at"`
+	CreatedAt  string `json:"created_at"`
+	LastUsedAt string `json:"last_used_at"`
+}
+
 type DrawingEventDTO struct {
 	EventID   string    `bson:"eventId" json:"eventId"`
 	BoardID   string    `bson:"boardId" json:"boardId"`

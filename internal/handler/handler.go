@@ -3,10 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	ws "github.com/gorilla/websocket"
-	"github.com/shared-drawboard/internal/middleware"
 	"github.com/shared-drawboard/internal/models"
 	"github.com/shared-drawboard/internal/service"
 	"github.com/shared-drawboard/internal/websocket"
@@ -42,6 +43,7 @@ func New() (*Handler, error) {
 
 	router.HandleFunc("/signup", h.signUpUserHandler).Methods("POST")
 	router.HandleFunc("/signin", h.signinUserHandler).Methods("POST")
+	router.HandleFunc("/refresh", h.refreshTokenHandler).Methods("POST")
 
 	router.PathPrefix("/drawboard/").Handler(
 		http.StripPrefix("/drawboard/", http.FileServer(http.Dir("./web/drawboard"))),
@@ -54,9 +56,13 @@ func New() (*Handler, error) {
 	wsManager := websocket.NewManager()
 	go wsManager.Run()
 
-	router.Handle("/ws", middleware.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// router.Handle("/ws", middleware.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// 	h.websocketHandler(w, r, wsManager)
+	// })))
+	//need to add token authentication
+	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		h.websocketHandler(w, r, wsManager)
-	})))
+	})
 
 	return h, nil
 }
@@ -112,13 +118,44 @@ func (h *Handler) signinUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := auth.CreateJWTToken(user.Email)
+	authExpiryAt := time.Now().Add(15 * time.Minute).Unix()
+	authtoken, err := auth.CreateJWTToken(user.Email, authExpiryAt)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	response := map[string]interface{}{"message": "sign in successful", "token": token}
+	refreshTokenDTO, err := h.Service.CreateSession(r.Context(), user.Email)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	expiresAt, err := strconv.ParseInt(refreshTokenDTO.ExpiresAt, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid expires at value", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh-token",
+		Value:    refreshTokenDTO.TokenHash,
+		Path:     "/",
+		Expires:  time.Unix(expiresAt, 0),
+		HttpOnly: true,                    // prevent JS access
+		Secure:   true,                    // send only over HTTPS
+		SameSite: http.SameSiteStrictMode, // CSRF protection
+	})
+
+	response := map[string]interface{}{
+		"message":        "Sign in successful.",
+		"auth-token":     authtoken,
+		"auth-expiry-at": authExpiryAt,
+		"user":           user,
+	}
 	json.NewEncoder(w).Encode(response)
+
+}
+
+func (h *Handler) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 

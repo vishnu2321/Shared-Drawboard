@@ -17,7 +17,7 @@ func setEnvVariables() {
 	}
 }
 
-func CreateJWTToken(username string) (string, error) {
+func CreateJWTToken(username string, expiryTime int64) (string, error) {
 	setEnvVariables()
 
 	secretKey := os.Getenv("SECRETKEY_FOR_JWT")
@@ -26,7 +26,7 @@ func CreateJWTToken(username string) (string, error) {
 		"sub": username,
 		// "role": role,
 		"iss": "shared-drawboard",
-		"exp": time.Now().Add(24 * time.Hour).Unix(), // Expires in 1 hour
+		"exp": expiryTime,
 		"iat": time.Now().Unix(),
 	}
 

@@ -13,6 +13,11 @@ const signUpNameError = document.getElementById('signUpNameError');
 const signUpEmailError = document.getElementById('signUpEmailError');
 const signUpPasswordError = document.getElementById('signUpPasswordError');
 
+document.addEventListener("DOMContentLoaded", function () {
+    localStorage.getItem("auth-token")
+    localStorage.getItem("refresh-token")
+});
+
 // Toggle between forms
 toSignUp.addEventListener('click', () => {
     document.querySelector('.form-container').style.height = '600px';
@@ -77,7 +82,8 @@ signInForm.addEventListener('submit', async (e) => {
 
             if (response.ok) {
                 const data = await response.json();
-                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('auth-token', data["auth-token"]);
+                localStorage.setItem('refresh-token', data["refresh-token"])
                 // Set success message
                 setMessage('formMessage', 'Login successful! Redirecting...');
                 window.location.href = '/drawboard'; // Redirect to the main app
