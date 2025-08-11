@@ -14,9 +14,42 @@ const signUpEmailError = document.getElementById('signUpEmailError');
 const signUpPasswordError = document.getElementById('signUpPasswordError');
 
 document.addEventListener("DOMContentLoaded", function () {
-    localStorage.getItem("auth-token")
-    localStorage.getItem("refresh-token")
+    checkAuthAndSkip()
 });
+
+async function checkAuthAndSkip(){
+    const token = localStorage.getItem("auth-token")
+    const expiry = parseInt(localStorage.getItem("token-expiry"), 10);
+
+    if(token && expiry && Date.now() < expiry){
+        window.location.href = "/drawboard"
+        return;
+    }
+
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+        window.location.href = "/drawboard";
+    }
+}
+
+async function refreshAccessToken(){
+    try{
+        const res =  await fetch('/refresh', {
+            method: 'POST',
+            credentials: 'include' // send the refresh token cookie
+        });
+
+        if (!res.ok) return false;
+
+        const data = await res.json();
+        localStorage.setItem('auth-token', data["auth-token"]);
+        localStorage.setItem('token-expiry', Date.now() + 15 * 60 * 1000);
+        return true;
+    }catch(error){
+        console.error("Refresh token request failed:", error);
+        return false;
+    }
+}
 
 // Toggle between forms
 toSignUp.addEventListener('click', () => {
@@ -83,7 +116,7 @@ signInForm.addEventListener('submit', async (e) => {
             if (response.ok) {
                 const data = await response.json();
                 localStorage.setItem('auth-token', data["auth-token"]);
-                localStorage.setItem('refresh-token', data["refresh-token"])
+                localStorage.setItem('token-expiry', Date.now() + 15 * 60 * 1000)
                 // Set success message
                 setMessage('formMessage', 'Login successful! Redirecting...');
                 window.location.href = '/drawboard'; // Redirect to the main app

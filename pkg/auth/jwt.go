@@ -40,7 +40,7 @@ func CreateJWTToken(username string, expiryTime int64) (string, error) {
 	return tokenString, nil
 }
 
-func VerifyJWTToken(tokenStr string) (string, error) {
+func VerifyJWTToken(tokenStr string) (jwt.Claims, error) {
 	setEnvVariables()
 	secretKey := os.Getenv("SECRETKEY_FOR_JWT")
 
@@ -52,17 +52,13 @@ func VerifyJWTToken(tokenStr string) (string, error) {
 	})
 
 	if err != nil || !token.Valid {
-		return "", fmt.Errorf("invalid or expired token: %w", err)
+		return jwt.MapClaims{}, fmt.Errorf("invalid or expired token: %w", err)
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", fmt.Errorf("invalid token claims")
-	}
-	userID, ok := claims["sub"].(string)
-	if !ok {
-		return "", fmt.Errorf("invalid user ID in claims")
+		return jwt.MapClaims{}, fmt.Errorf("invalid token claims")
 	}
 
-	return userID, nil
+	return claims, nil
 }

@@ -26,9 +26,14 @@ class Whiteboard {
         this.init();
     }
 
-    connectWebSocket() {
+    async connectWebSocket() {
         // Create WebSocket connection
-        this.ws = new WebSocket('ws://localhost:8080/ws');
+        const token = await this.fetchToken()
+        if(!token){
+            window.location.href="/login/"
+        }
+
+        this.ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`);
         
         // Add WebSocket event listeners
         this.ws.onopen = () => console.log('WebSocket connected');
@@ -39,9 +44,49 @@ class Whiteboard {
 
     handleWebSocketMessage(event) {
         const message = JSON.parse(event.data);
-        console.log('Received WebSocket message:', message);
-        // Process incoming drawing events from other users
-        this.processRemoteEvent(message);
+        if(message.type == "TOKEN_EXPIRED"){
+            this.reconnect();
+        }else{
+            // Process incoming drawing events from other users
+            this.processRemoteEvent(message);
+        }
+    }
+
+    async fetchToken(){
+        const token = localStorage.getItem("auth-token")
+        if(token){
+            return token
+        }
+
+        const refreshed = await this.refreshAccessToken();
+        if (refreshed) {
+            window.location.href = "/drawboard";
+        }
+    }
+
+    async refreshAccessToken(){
+        try{
+            const res =  await fetch('/refresh', {
+                method: 'POST',
+                credentials: 'include' // send the refresh token cookie
+            });
+
+            if (!res.ok) return false;
+
+            const data = await res.json();
+            localStorage.setItem('auth-token', data["auth-token"]);
+            localStorage.setItem('token-expiry', Date.now() + 15 * 60 * 1000);
+            return true;
+        }catch(error){
+            console.error("Refresh token request failed:", error);
+            return false;
+        }
+    }
+
+    reconnect() {
+        this.ws.close();
+        this.ws = null;
+        this.connectWS();
     }
 
     sendDrawingEvent(eventData) {

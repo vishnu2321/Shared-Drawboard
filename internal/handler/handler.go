@@ -56,9 +56,6 @@ func New() (*Handler, error) {
 	wsManager := websocket.NewManager()
 	go wsManager.Run()
 
-	// router.Handle("/ws", middleware.AuthMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	h.websocketHandler(w, r, wsManager)
-	// })))
 	//need to add token authentication
 	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		h.websocketHandler(w, r, wsManager)
@@ -165,11 +162,42 @@ var upgrader = ws.Upgrader{
 }
 
 func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manager *websocket.Manager) {
+
+	tokenString := r.URL.Query().Get("token")
+	if tokenString == "" {
+		http.Error(w, "Missing token", http.StatusUnauthorized)
+		return
+	}
+
+	claims, err := auth.VerifyJWTToken(tokenString)
+	if err != nil {
+		http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	exp, err := claims.GetExpirationTime()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	go func(conn *ws.Conn, exp time.Time) {
+		duration := time.Until(exp)
+		if duration > 0 {
+			time.Sleep(duration)
+		}
+		// Notify client
+		_ = conn.WriteJSON(map[string]string{
+			"type": "TOKEN_EXPIRED",
+		})
+		conn.Close()
+	}(conn, exp.Time)
 
 	client := &websocket.Client{
 		ID:   helper.GenerateUniqueID(),
