@@ -33,7 +33,8 @@ class Whiteboard {
             window.location.href="/login/"
         }
 
-        this.ws = new WebSocket(`ws://localhost:8080/ws?token=${token}`);
+        const host = window.location.host
+        this.ws = new WebSocket(`ws://${host}/ws?token=${token}`);
         
         // Add WebSocket event listeners
         this.ws.onopen = () => console.log('WebSocket connected');
