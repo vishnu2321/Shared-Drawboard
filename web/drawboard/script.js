@@ -59,17 +59,21 @@ class Whiteboard {
             return token
         }
 
-        const refreshed = await this.refreshAccessToken();
+        let currentToken = token
+        const refreshed = await refreshAccessToken(currentToken);
         if (refreshed) {
             window.location.href = "/drawboard";
         }
     }
 
-    async refreshAccessToken(){
+    async refreshAccessToken(currentToken){
         try{
             const res =  await fetch('/refresh', {
                 method: 'POST',
-                credentials: 'include' // send the refresh token cookie
+                credentials: 'include', // send the refresh token cookie
+                 body:{
+                    "auth-token":currentToken
+                }
             });
 
             if (!res.ok) return false;

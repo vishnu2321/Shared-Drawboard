@@ -52,3 +52,10 @@ type Point struct {
 	X float64 `bson:"x" json:"x"`
 	Y float64 `bson:"y" json:"y"`
 }
+
+type RefreshTokenDTO struct {
+	AuthToken        string `json:"auth-token,omitempty"`
+	AuthExpiresAt    string `json:"auth-token-expiry,omitempty"`
+	RefreshToken     string `json:"refresh-token,omitempty"`
+	RefreshExpriesAt string `json:"refresh-token-expiry,omitempty"`
+}

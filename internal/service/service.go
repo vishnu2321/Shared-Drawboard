@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/shared-drawboard/internal/database"
 	"github.com/shared-drawboard/internal/models"
 	"github.com/shared-drawboard/pkg/auth"
@@ -84,4 +85,51 @@ func (s *Service) CreateSession(ctx context.Context, userID string) (*models.Ses
 	}
 
 	return &sDTO, nil
+}
+
+func (s *Service) UpdateSession(ctx context.Context, tokenDTO models.RefreshTokenDTO) (*models.RefreshTokenDTO, error) {
+	authToken := tokenDTO.AuthToken
+
+	//verify jwt token
+	claims, err := auth.VerifyJWTToken(authToken)
+	if err != nil {
+		return &models.RefreshTokenDTO{}, err
+	}
+
+	mapClaims, ok := claims.(jwt.MapClaims)
+	if !ok {
+		return &models.RefreshTokenDTO{}, errors.New("invalid claims type")
+	}
+
+	uid := mapClaims["sub"].(string)
+
+	//create new refresh token, auth token
+	newAuthToken, err := auth.CreateJWTToken(uid, time.Now().Add(15*time.Minute).Unix())
+	if err != nil {
+		return &models.RefreshTokenDTO{}, err
+	}
+
+	newRefreshToken, err := auth.CreateRefreshToken(32)
+	if err != nil {
+		return &models.RefreshTokenDTO{}, err
+	}
+
+	newRefreshtokenHash, err := bcrypt.GenerateFromPassword([]byte(newRefreshToken), bcrypt.DefaultCost)
+	if err != nil {
+		return &models.RefreshTokenDTO{}, err
+	}
+
+	newTokenDTO := models.RefreshTokenDTO{
+		AuthToken:        newAuthToken,
+		AuthExpiresAt:    strconv.FormatInt(time.Now().Add(15*time.Minute).Unix(), 10),
+		RefreshToken:     newRefreshToken,
+		RefreshExpriesAt: strconv.FormatInt(time.Now().Add(24*7*time.Hour).Unix(), 10),
+	}
+
+	_, err = s.DB.UpdateSession(ctx, uid, string(newRefreshtokenHash))
+	if err != nil {
+		return &models.RefreshTokenDTO{}, err
+	}
+
+	return &newTokenDTO, nil
 }

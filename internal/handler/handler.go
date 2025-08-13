@@ -61,6 +61,10 @@ func New() (*Handler, error) {
 		h.websocketHandler(w, r, wsManager)
 	})
 
+	router.HandleFunc("/refresh", func(w http.ResponseWriter, r *http.Request) {
+		h.refreshTokenHandler(w, r)
+	})
+
 	return h, nil
 }
 
@@ -153,7 +157,51 @@ func (h *Handler) signinUserHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
+	var req models.RefreshTokenDTO
 
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	authToken := req.AuthToken
+	if authToken == "" {
+		http.Error(w, "Empty JWT tokken", http.StatusBadRequest)
+		return
+	}
+
+	rtoken, err := r.Cookie("refresh-token")
+	if err != nil {
+		http.Error(w, "error reading token", http.StatusInternalServerError)
+	}
+
+	tdto, err := h.Service.UpdateSession(r.Context(), models.RefreshTokenDTO{AuthToken: authToken, RefreshToken: rtoken.Value})
+	if err != nil {
+		http.Error(w, "error updating session", http.StatusInternalServerError)
+	}
+
+	refreshExpiresAt, err := strconv.ParseInt(tdto.RefreshExpriesAt, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid expires at value", http.StatusInternalServerError)
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh-token",
+		Value:    tdto.RefreshToken,
+		Path:     "/refresh",
+		Expires:  time.Unix(refreshExpiresAt, 0),
+		HttpOnly: true,                    // prevent JS access
+		Secure:   true,                    // send only over HTTPS
+		SameSite: http.SameSiteStrictMode, // CSRF protection
+	})
+
+	response := map[string]interface{}{
+		"message":        "Sign in successful.",
+		"auth-token":     tdto.AuthToken,
+		"auth-expiry-at": tdto.AuthExpiresAt,
+	}
+	json.NewEncoder(w).Encode(response)
 }
 
 var upgrader = ws.Upgrader{

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ type DB interface {
 	SaveUserDB(ctx context.Context, u models.User) (id string, err error)
 	FindBy(ctx context.Context, field string, value interface{}) (*User, error)
 	CreateSession(ctx context.Context, session models.SessionDTO) (string, error)
+	UpdateSession(ctx context.Context, uid string, newToken string) (string, error)
 }
 
 type MongoDB struct {
@@ -122,10 +124,27 @@ func (m *MongoDB) CreateSession(ctx context.Context, s models.SessionDTO) (strin
 	return session.ID.Hex(), nil
 }
 
-// func (m *MongoDB) UpdateSession(ctx context.Context) {
-// 	col := m.db.Collection(SESSION_COLLECTION)
+func (m *MongoDB) UpdateSession(ctx context.Context, uid string, newTokenHash string) (string, error) {
+	col := m.db.Collection(SESSION_COLLECTION)
 
-// }
+	filter := bson.M{"user_id": uid}
+	update := bson.M{
+		"$set": bson.M{
+			"token_hash":   newTokenHash,
+			"created_at":   strconv.FormatInt(time.Now().Unix(), 10),
+			"last_used_at": strconv.FormatInt(time.Now().Unix(), 10),
+			"expires_at":   strconv.FormatInt(time.Now().Add(24*7*time.Hour).Unix(), 10),
+		},
+	}
+
+	doc, err := col.UpdateOne(ctx, filter, update)
+	if err != nil {
+		logger.Error("Update failed: %v", err)
+		return "", fmt.Errorf("failed to insert user: %w", err)
+	}
+
+	return doc.UpsertedID.(string), nil
+}
 
 // func (m *MongoDB) DeleteSession(ctx context.Context) {
 // 	col := m.db.Collection(SESSION_COLLECTION)
