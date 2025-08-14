@@ -56,13 +56,8 @@ func New() (*Handler, error) {
 	wsManager := websocket.NewManager()
 	go wsManager.Run()
 
-	//need to add token authentication
 	router.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		h.websocketHandler(w, r, wsManager)
-	})
-
-	router.HandleFunc("/refresh", func(w http.ResponseWriter, r *http.Request) {
-		h.refreshTokenHandler(w, r)
 	})
 
 	return h, nil
