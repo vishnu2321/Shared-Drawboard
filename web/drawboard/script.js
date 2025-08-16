@@ -55,25 +55,23 @@ class Whiteboard {
 
     async fetchToken(){
         const token = localStorage.getItem("auth-token")
-        if(token){
+        const expiry = localStorage.getItem("token-expiry")
+        if(token && Date.now() < parseInt(expiry, 10)){
             return token
         }
 
         let currentToken = token
-        const refreshed = await refreshAccessToken(currentToken);
+        const refreshed = await this.refreshAccessToken();
         if (refreshed) {
             window.location.href = "/drawboard";
         }
     }
 
-    async refreshAccessToken(currentToken){
+    async refreshAccessToken(){
         try{
             const res =  await fetch('/refresh', {
                 method: 'POST',
-                credentials: 'include', // send the refresh token cookie
-                 body:{
-                    "auth-token":currentToken
-                }
+                credentials: 'include', // send the refresh token cookie and also the user-id cookie
             });
 
             if (!res.ok) return false;

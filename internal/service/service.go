@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/shared-drawboard/internal/database"
 	"github.com/shared-drawboard/internal/models"
 	"github.com/shared-drawboard/pkg/auth"
@@ -88,20 +87,8 @@ func (s *Service) CreateSession(ctx context.Context, userID string) (*models.Ses
 }
 
 func (s *Service) UpdateSession(ctx context.Context, tokenDTO models.RefreshTokenDTO) (*models.RefreshTokenDTO, error) {
-	authToken := tokenDTO.AuthToken
 
-	//verify jwt token
-	claims, err := auth.VerifyJWTToken(authToken)
-	if err != nil {
-		return &models.RefreshTokenDTO{}, err
-	}
-
-	mapClaims, ok := claims.(jwt.MapClaims)
-	if !ok {
-		return &models.RefreshTokenDTO{}, errors.New("invalid claims type")
-	}
-
-	uid := mapClaims["sub"].(string)
+	uid := tokenDTO.UserID
 
 	//create new refresh token, auth token
 	newAuthToken, err := auth.CreateJWTToken(uid, time.Now().Add(15*time.Minute).Unix())
@@ -120,10 +107,11 @@ func (s *Service) UpdateSession(ctx context.Context, tokenDTO models.RefreshToke
 	}
 
 	newTokenDTO := models.RefreshTokenDTO{
+		UserID:           uid,
 		AuthToken:        newAuthToken,
-		AuthExpiresAt:    strconv.FormatInt(time.Now().Add(15*time.Minute).Unix(), 10),
+		AuthExpiresAt:    strconv.FormatInt(time.Now().Add(15*time.Minute).Unix(), 10), // 15 minutes
 		RefreshToken:     newRefreshToken,
-		RefreshExpriesAt: strconv.FormatInt(time.Now().Add(24*7*time.Hour).Unix(), 10),
+		RefreshExpriesAt: strconv.FormatInt(time.Now().Add(24*7*time.Hour).Unix(), 10), // 7 days
 	}
 
 	_, err = s.DB.UpdateSession(ctx, uid, string(newRefreshtokenHash))
@@ -132,4 +120,8 @@ func (s *Service) UpdateSession(ctx context.Context, tokenDTO models.RefreshToke
 	}
 
 	return &newTokenDTO, nil
+}
+
+func (s *Service) BatchSaver(events <-chan models.Event) {
+
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/mux"
 	ws "github.com/gorilla/websocket"
 	"github.com/shared-drawboard/internal/models"
@@ -134,8 +135,17 @@ func (h *Handler) signinUserHandler(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh-token",
 		Value:    refreshTokenDTO.TokenHash,
-		Path:     "/",
+		Path:     "/refresh",
 		Expires:  time.Unix(expiresAt, 0),
+		HttpOnly: true,                    // prevent JS access
+		Secure:   true,                    // send only over HTTPS
+		SameSite: http.SameSiteStrictMode, // CSRF protection
+	})
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "user-id",
+		Value:    user.Email,
+		Path:     "/",
 		HttpOnly: true,                    // prevent JS access
 		Secure:   true,                    // send only over HTTPS
 		SameSite: http.SameSiteStrictMode, // CSRF protection
@@ -159,18 +169,21 @@ func (h *Handler) refreshTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authToken := req.AuthToken
-	if authToken == "" {
-		http.Error(w, "Empty JWT tokken", http.StatusBadRequest)
-		return
+	defer r.Body.Close()
+
+	cookie, err := r.Cookie("user-id")
+	if err != nil {
+		http.Error(w, "Error reading cookie", http.StatusInternalServerError)
 	}
+
+	userId := cookie.Value
 
 	rtoken, err := r.Cookie("refresh-token")
 	if err != nil {
 		http.Error(w, "error reading token", http.StatusInternalServerError)
 	}
 
-	tdto, err := h.Service.UpdateSession(r.Context(), models.RefreshTokenDTO{AuthToken: authToken, RefreshToken: rtoken.Value})
+	tdto, err := h.Service.UpdateSession(r.Context(), models.RefreshTokenDTO{UserID: userId, RefreshToken: rtoken.Value})
 	if err != nil {
 		http.Error(w, "error updating session", http.StatusInternalServerError)
 	}
@@ -204,6 +217,8 @@ var upgrader = ws.Upgrader{
 	WriteBufferSize: 1024,
 }
 
+var batchEventBuffer = make(chan models.Event, 500)
+
 func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manager *websocket.Manager) {
 
 	tokenString := r.URL.Query().Get("token")
@@ -217,6 +232,13 @@ func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manag
 		http.Error(w, "Invalid token: "+err.Error(), http.StatusUnauthorized)
 		return
 	}
+
+	mapClaims, ok := claims.(jwt.MapClaims)
+	if !ok {
+		http.Error(w, "Error decoding token", http.StatusInternalServerError)
+	}
+
+	userId := mapClaims["sub"].(string)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -243,15 +265,17 @@ func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manag
 	}(conn, exp.Time)
 
 	client := &websocket.Client{
-		ID:   helper.GenerateUniqueID(),
-		Conn: conn,
-		Send: make(chan []byte),
+		ID:     helper.GenerateUniqueID(),
+		UserID: userId,
+		Conn:   conn,
+		Send:   make(chan []byte),
 	}
 
 	manager.Register <- client
 
 	go handleRead(client, manager)
 	go handleWrite(client, manager)
+	go h.Service.BatchSaver(batchEventBuffer)
 }
 
 func handleRead(client *websocket.Client, manager *websocket.Manager) {
@@ -266,6 +290,13 @@ func handleRead(client *websocket.Client, manager *websocket.Manager) {
 			logger.Error("Read error: %s", err)
 			break
 		}
+
+		parsedMsg, err := helper.ParseEventData(message)
+		if err != nil {
+			logger.Error("Parsing Error: %s", err)
+		}
+
+		batchEventBuffer <- parsedMsg
 		manager.Broadcast <- message
 	}
 }

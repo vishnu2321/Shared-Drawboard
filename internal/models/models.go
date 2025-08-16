@@ -1,7 +1,5 @@
 package models
 
-import "time"
-
 // currently using as DTO but its better to keep models and DTOs seperate
 type User struct {
 	ID       string `json:"_id,omitempty"`
@@ -19,41 +17,57 @@ type SessionDTO struct {
 	LastUsedAt string `json:"last_used_at"`
 }
 
-type DrawingEventDTO struct {
-	EventID   string    `bson:"eventId" json:"eventId"`
-	BoardID   string    `bson:"boardId" json:"boardId"`
-	UserID    string    `bson:"userId" json:"userId"`
-	Timestamp time.Time `bson:"timestamp" json:"timestamp"`
-	EventType string    `bson:"eventType" json:"eventType"`
-	Tool      string    `bson:"tool" json:"tool"`
+type EventType string
 
-	// Common properties for all tools
-	Color     string `bson:"color,omitempty" json:"color,omitempty"`
-	Thickness int    `bson:"thickness,omitempty" json:"thickness,omitempty"`
+const (
+	FreehandDraw EventType = "freehandDraw"
+	ShapeCreate  EventType = "shapeCreate"
+	TextAdd      EventType = "textAdd"
+	ObjectDelete EventType = "objectDelete"
+	BoardClear   EventType = "boardClear"
+)
 
-	// Position and size properties
-	X      float64 `bson:"x,omitempty" json:"x,omitempty"`
-	Y      float64 `bson:"y,omitempty" json:"y,omitempty"`
-	Width  float64 `bson:"width,omitempty" json:"width,omitempty"`
-	Height float64 `bson:"height,omitempty" json:"height,omitempty"`
+type Event struct {
+	Type EventType   `json:"type"`
+	Tool string      `json:"tool"`
+	Data interface{} `json:"data"`
+}
 
-	// Points for freehand drawing and erasing
-	Points []Point `bson:"points,omitempty" json:"points,omitempty"`
+// Event Data Structures
+type FreehandDrawData struct {
+	Color     string  `json:"color"`
+	Thickness float64 `json:"thickness"`
+	Points    []Point `json:"points"`
+}
 
-	// Text properties
-	Text     string `bson:"text,omitempty" json:"text,omitempty"`
-	FontSize int    `bson:"fontSize,omitempty" json:"fontSize,omitempty"`
+type ShapeCreateData struct {
+	Color     string  `json:"color"`
+	Thickness float64 `json:"thickness"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	Width     float64 `json:"width"`
+	Height    float64 `json:"height"`
+}
 
-	// Object reference for deletion
-	ObjectID string `bson:"objectId,omitempty" json:"objectId,omitempty"`
+type TextAddData struct {
+	Color     string  `json:"color"`
+	Thickness float64 `json:"thickness"`
+	X         float64 `json:"x"`
+	Y         float64 `json:"y"`
+	Text      string  `json:"text"`
+}
+
+type ObjectDeleteData struct {
+	Index int `json:"index"`
 }
 
 type Point struct {
-	X float64 `bson:"x" json:"x"`
-	Y float64 `bson:"y" json:"y"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
 type RefreshTokenDTO struct {
+	UserID           string `json:"user_id,omitempty"`
 	AuthToken        string `json:"auth-token,omitempty"`
 	AuthExpiresAt    string `json:"auth-token-expiry,omitempty"`
 	RefreshToken     string `json:"refresh-token,omitempty"`
