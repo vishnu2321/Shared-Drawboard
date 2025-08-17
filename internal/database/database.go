@@ -20,6 +20,7 @@ type DB interface {
 	FindBy(ctx context.Context, field string, value interface{}) (*User, error)
 	CreateSession(ctx context.Context, session models.SessionDTO) (string, error)
 	UpdateSession(ctx context.Context, uid string, newToken string) (string, error)
+	BatchSave(ctx context.Context, batch []interface{}) error
 }
 
 type MongoDB struct {
@@ -30,6 +31,7 @@ type MongoDB struct {
 const (
 	USER_COLLECTION    = "users"
 	SESSION_COLLECTION = "sessions"
+	EVENTS_COLLECTION  = "events"
 )
 
 func New() (*MongoDB, error) {
@@ -152,3 +154,15 @@ func (m *MongoDB) UpdateSession(ctx context.Context, uid string, newTokenHash st
 // 	_, err := col.DeleteOne()
 
 // }
+
+func (m *MongoDB) BatchSave(ctx context.Context, batch []interface{}) error {
+	col := m.db.Collection(EVENTS_COLLECTION)
+
+	_, err := col.InsertMany(ctx, batch)
+	if err != nil {
+		logger.Error("Update failed: %v", err)
+		return fmt.Errorf("failed to insert batch data: %w", err)
+	}
+
+	return nil
+}

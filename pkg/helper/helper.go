@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/shared-drawboard/internal/models"
@@ -28,6 +29,7 @@ func ParseEventData(rawData []byte) (models.Event, error) {
 	var event models.Event
 	event.Type = baseEvent.Type
 	event.Tool = baseEvent.Tool
+	event.CreatedAt = strconv.FormatInt(time.Now().Unix(), 10)
 
 	// Second pass for specific data types
 	switch baseEvent.Type {

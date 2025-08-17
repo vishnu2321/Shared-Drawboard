@@ -217,7 +217,9 @@ var upgrader = ws.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-var batchEventBuffer = make(chan models.Event, 500)
+const BatchSize = 1000
+
+var batchEventBuffer = make(chan models.Event, BatchSize)
 
 func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manager *websocket.Manager) {
 
@@ -275,7 +277,7 @@ func (h *Handler) websocketHandler(w http.ResponseWriter, r *http.Request, manag
 
 	go handleRead(client, manager)
 	go handleWrite(client, manager)
-	go h.Service.BatchSaver(batchEventBuffer)
+	go h.Service.BatchSaver(batchEventBuffer, BatchSize)
 }
 
 func handleRead(client *websocket.Client, manager *websocket.Manager) {
@@ -295,6 +297,8 @@ func handleRead(client *websocket.Client, manager *websocket.Manager) {
 		if err != nil {
 			logger.Error("Parsing Error: %s", err)
 		}
+		// fmt.Println("msg", parsedMsg)
+		// fmt.Println("err", err)
 
 		batchEventBuffer <- parsedMsg
 		manager.Broadcast <- message

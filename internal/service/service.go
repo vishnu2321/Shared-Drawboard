@@ -122,6 +122,53 @@ func (s *Service) UpdateSession(ctx context.Context, tokenDTO models.RefreshToke
 	return &newTokenDTO, nil
 }
 
-func (s *Service) BatchSaver(events <-chan models.Event) {
+func (s *Service) BatchSaver(events <-chan models.Event, BatchSize int64) error {
+	batch := make([]interface{}, 0)
+	timer := time.NewTicker(10 * time.Second)
+	defer timer.Stop()
 
+	for {
+		select {
+		case event, ok := <-events:
+			if !ok {
+				if len(batch) > 0 {
+					ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+					defer cancel()
+					if err := s.DB.BatchSave(ctx, batch); err != nil {
+						return err
+					}
+				}
+				return nil
+			}
+
+			if len(batch) < int(BatchSize) {
+				batch = append(batch, event)
+			} else {
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				err := s.DB.BatchSave(ctx, batch)
+				if err != nil {
+					return err
+				}
+
+				batch = make([]interface{}, 0)
+			}
+
+		case <-timer.C:
+			if len(batch) == 0 {
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+
+			err := s.DB.BatchSave(ctx, batch)
+			if err != nil {
+				return err
+			}
+
+			batch = make([]interface{}, 0)
+		}
+	}
 }
